@@ -1,6 +1,6 @@
-import gym
+import gymnasium as gym
 import numpy as np
-from gym import spaces
+from gymnasium import spaces
 
 class ForexTradingEnv(gym.Env):
     """
@@ -144,7 +144,7 @@ class ForexTradingEnv(gym.Env):
         """
         # Decode the action
         direction, sl, tp = self.action_map[action]
-        
+
         if direction is None:
             # No trade => reward=0
             reward = 0.0
@@ -158,44 +158,44 @@ class ForexTradingEnv(gym.Env):
             # direction=0 or 1 => short/long
             entry_price = self.df.loc[self.current_step, "Close"]
             reward = self._calculate_reward(direction, sl, tp)
-            
+
             # next bar's close if possible
             if self.current_step < self.n_steps - 1:
                 exit_price = self.df.loc[self.current_step + 1, "Close"]
             else:
                 exit_price = entry_price
-            
+
             self.last_trade_info = {
                 "entry_price": entry_price,
                 "exit_price": exit_price,
                 "pnl": reward / 10000.0  # convert back to 'pips'
             }
-            
+
             # Update equity
             self.equity += reward
-        
+
         # Log equity (if no trade => equity stays same)
         self.equity_curve.append(self.equity)
-        
+
         # Move forward
         self.current_step += 1
-        if self.current_step >= self.n_steps - 1:
-            self.done = True
-        else:
-            self.done = False
-        
+        terminated = self.current_step >= self.n_steps - 1
+        truncated = False
+
         # Observe next state
         obs = self._get_observation()
-        
-        return obs, reward, self.done, {}
-    
-    def reset(self):
+
+        return obs, reward, terminated, truncated, {}
+
+    def reset(self, *, seed=None, options=None):
+        super().reset(seed=seed)
         self.current_step = self.window_size  # start so we have a full window
         self.equity = 10000.0
         self.done = False
         self.equity_curve = []
         self.last_trade_info = None
-        return self._get_observation()
+        obs = self._get_observation()
+        return obs, {}
     
     def render(self, mode='human'):
         """Optional: print or plot debug info."""
